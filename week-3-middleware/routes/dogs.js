@@ -1,24 +1,30 @@
 const express = require("express");
+const dogs = require("../dogData");
+
 const router = express.Router();
-const dogs = require("../dogData.js");
 
 router.get("/dogs", (req, res) => {
-	res.json(dogs);
+  res.status(200).json(dogs);
 });
 
 router.post("/adopt", (req, res) => {
-    const { name, address, email, dogName } = req.body;
-    if (!name || !email || !dogName) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
+  const { name, address, email, dogName } = req.body;
 
-    return res.status(201).json({
-        message: `Adoption request received. We will contact you at ${email} for further details.`,
-    });
+  res.status(201).json({
+    message: `Adoption request received. We will contact you at ${email} for further details.`,
+    application: {
+      name,
+      address,
+      email,
+      dogName,
+      applicationId: Date.now(),
+    },
+  });
 });
 
-router.get("/error", (req, res) => {
-	throw new Error("Test error");
+router.get("/error", (req, res, next) => {
+  next(new Error("Test error"));
 });
 
 module.exports = router;
+
