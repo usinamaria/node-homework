@@ -27,7 +27,7 @@ describe("testing logon, register, and logoff", () => {
       body: { email: "jim@sample.com", password: "Pa$$word20" },
     });
     saveRes = httpMocks.createResponse();
-    await logon(req, saveRes); 
+    await logon(req, saveRes);
     expect(saveRes.statusCode).toBe(200); // success!
   });
 

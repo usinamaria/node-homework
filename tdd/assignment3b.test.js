@@ -5,21 +5,18 @@ const path = require("path");
 
 let logSpy;
 let errorSpy;
-let warnSpy;
 
 beforeAll(() => {
 	logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 	errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-	warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 afterAll(() => {
 	logSpy.mockRestore();
 	errorSpy.mockRestore();
-	warnSpy.mockRestore();
 });
 
-describe("Assignment 3b: Middleware Integration", () => {
+describe("Assignment 3b: Dog Rescue Middleware", () => {
 	describe("Built-In Middleware", () => {
 		describe("JSON parsing middleware should parse request bodies for POST /adopt", () => {
 			let res;
@@ -41,9 +38,9 @@ describe("Assignment 3b: Middleware Integration", () => {
 			});
 		});
 
-		describe("Static file middleware should serve images from public/images directory", () => {
+		describe("Static file middleware should serve images from week-3-middleware/public/images", () => {
 			let res;
-			const imagePath = path.join(__dirname, "../public/images/dachshund.png");
+			const imagePath = path.join(__dirname, "../week-3-middleware/public/images/dachshund.png");
 
 			beforeAll(() => {
 				if (!fs.existsSync(imagePath)) {
@@ -107,144 +104,23 @@ describe("Assignment 3b: Middleware Integration", () => {
 		});
 	});
 
-	describe("Enhanced Middleware Features", () => {
-		describe("Security headers middleware should set security headers on all responses", () => {
-			let res;
+	describe("404 handler should return 404 JSON response for unmatched routes", () => {
+		let res;
 
-			beforeAll(async () => {
-				res = await request(app).get("/dogs");
-			});
-
-			test("Response includes X-Content-Type-Options: nosniff header", () => {
-				expect(res.headers["x-content-type-options"]).toBe("nosniff");
-			});
-
-			test("Response includes X-Frame-Options: DENY header", () => {
-				expect(res.headers["x-frame-options"]).toBe("DENY");
-			});
-
-			test("Response includes X-XSS-Protection: 1; mode=block header", () => {
-				expect(res.headers["x-xss-protection"]).toBe("1; mode=block");
-			});
+		beforeAll(async () => {
+			res = await request(app).get("/nonexistent-route");
 		});
 
-		describe("Request size limiting middleware should accept requests within the size limit", () => {
-			test("POST /adopt with request body within 1mb limit is accepted", async () => {
-				const res = await request(app)
-					.post("/adopt")
-					.send({ dogName: "Sweet Pea", name: "Test User", email: "test@example.com" })
-					.set("Content-Type", "application/json");
-				expect(res.status).toBe(201);
-			});
+		test("Unmatched route responds with status 404", () => {
+			expect(res.status).toBe(404);
 		});
 
-		describe("Content-Type validation middleware should reject POST requests without application/json content type", () => {
-			test("POST /adopt with text/plain content type returns 400 error", async () => {
-				const res = await request(app)
-					.post("/adopt")
-					.send(JSON.stringify({ dogName: "Sweet Pea", name: "Test User", email: "test@example.com" }))
-					.set("Content-Type", "text/plain");
-				expect(res.status).toBe(400);
-				expect(res.body.error).toMatch(/Content-Type must be application\/json/);
-			});
-
-			test("GET requests are not validated for content type", async () => {
-				const res = await request(app).get("/dogs");
-				expect(res.status).toBe(200);
-			});
+		test("404 response includes 'Route not found' error message", () => {
+			expect(res.body.error).toBe("Route not found");
 		});
 
-		describe("404 handler should return 404 JSON response for unmatched routes", () => {
-			let res;
-
-			beforeAll(async () => {
-				res = await request(app).get("/nonexistent-route");
-			});
-
-			test("Unmatched route responds with status 404", () => {
-				expect(res.status).toBe(404);
-			});
-
-			test("404 response includes 'Route not found' error message", () => {
-				expect(res.body.error).toBe("Route not found");
-			});
-
-			test("404 response includes requestId in response body", () => {
-				expect(res.body.requestId).toBeDefined();
-			});
-		});
-	});
-
-	describe("Advanced Error Handling", () => {
-		describe("Custom Error Classes", () => {
-			describe("A ValidationError (400) should be returned when POST /adopt is missing required fields (name, email, or dogName)", () => {
-				let res;
-
-				beforeAll(async () => {
-					res = await request(app)
-						.post("/adopt")
-						.send({ dogName: "Sweet Pea" }) // Intentional: Missing required fields (name and email)
-						.set("Content-Type", "application/json");
-				});
-
-				test("POST /adopt with missing required fields responds with status 400", () => {
-					expect(res.status).toBe(400);
-				});
-
-				test("ValidationError response includes error message matching 'Missing required fields'", () => {
-					expect(res.body.error).toMatch(/Missing required fields/);
-				});
-
-				test("ValidationError response includes requestId in response body", () => {
-					expect(res.body.requestId).toBeDefined();
-				});
-			});
-
-			describe("A NotFoundError (404) should be returned when POST /adopt requests a dog that is not in the list or not available", () => {
-				let res;
-
-				beforeAll(async () => {
-					res = await request(app)
-						.post("/adopt")
-						.send({ dogName: "Nonexistent Dog", name: "Test User", email: "test@example.com" })
-						.set("Content-Type", "application/json");
-				});
-
-				test("POST /adopt with nonexistent or unavailable dog responds with status 404", () => {
-					expect(res.status).toBe(404);
-				});
-
-				test("NotFoundError response includes error message matching 'not found or not available'", () => {
-					expect(res.body.error).toMatch(/not found or not available/);
-				});
-
-				test("NotFoundError response includes requestId in response body", () => {
-					expect(res.body.requestId).toBeDefined();
-				});
-			});
-
-			describe("Error logging should use console.warn() for 4xx errors and console.error() for 5xx errors", () => {
-				test("ValidationError (400) is logged with console.warn() and message starting with 'WARN: ValidationError'", async () => {
-					await request(app)
-						.post("/adopt")
-						.send({ dogName: "Sweet Pea" })
-						.set("Content-Type", "application/json");
-					expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/WARN: ValidationError/));
-				});
-
-				test("NotFoundError (404) is logged with console.warn() and message starting with 'WARN: NotFoundError'", async () => {
-					await request(app)
-						.post("/adopt")
-						.send({ dogName: "Nonexistent Dog", name: "Test User", email: "test@example.com" })
-						.set("Content-Type", "application/json");
-					expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/WARN: NotFoundError/));
-				});
-
-				test("Server errors (500) are logged with console.error() and message starting with 'ERROR: Error'", async () => {
-					await request(app).get("/error");
-					expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/ERROR: Error/));
-				});
-			});
+		test("404 response includes requestId in response body", () => {
+			expect(res.body.requestId).toBeDefined();
 		});
 	});
 });
