@@ -7,12 +7,36 @@ if (!fs.existsSync(sampleFilesDir)) {
   fs.mkdirSync(sampleFilesDir, { recursive: true });
 }
 
-// OS module
+console.log('Platform:', os.platform());
+console.log('CPU:', os.cpus()[0].model);
+console.log('Total Memory:', os.totalmem());
+
+const joinedPath = path.join(sampleFilesDir, 'folder', 'file.txt');
+console.log('Joined path:', joinedPath);
 
 
-// Path module
+async function writeAndRead() {
+  const demoPath = path.join(sampleFilesDir, 'demo.txt');
+  await fs.promises.writeFile(demoPath, 'Hello from fs.promises!');
+  const data = await fs.promises.readFile(demoPath, 'utf8');
+  console.log('fs.promises read:', data);
+}
 
-// fs.promises API
+writeAndRead();
 
+const largeFilePath = path.join(sampleFilesDir, 'largefile.txt');
+let largeFileContent = '';
+for (let i = 1; i <= 100; i++) {
+  largeFileContent += `This is a line in a large file, line number ${i}.\n`;
+}
+fs.writeFileSync(largeFilePath, largeFileContent);
 
-// Streams for large files- log first 40 chars of each chunk
+const readStream = fs.createReadStream(largeFilePath, { highWaterMark: 1024 });
+
+readStream.on('data', (chunk) => {
+  console.log('Read chunk:', chunk.toString().slice(0, 40));
+});
+
+readStream.on('end', () => {
+  console.log('Finished reading large file with streams.');
+});
