@@ -13,6 +13,24 @@ fs.readFile(filePath, 'utf8', (err, data) => {
   console.log('Callback read:', data);
 });
 
+// Callback hell example (for illustration only, not run):
+// Chaining multiple async steps by nesting callbacks inside callbacks
+// makes the code grow to the right with every extra step, is hard to
+// read top-to-bottom, and forces duplicate error handling at every level.
+// Adding, removing, or reordering a step means restructuring the whole
+// nested block, which is what makes this pattern so error-prone to maintain.
+//
+// fs.readFile(filePath, 'utf8', (err, data) => {
+//   if (err) return console.error(err);
+//   fs.readFile(filePath, 'utf8', (err, data) => {
+//     if (err) return console.error(err);
+//     fs.readFile(filePath, 'utf8', (err, data) => {
+//       if (err) return console.error(err);
+//       console.log('Nested callback read:', data);
+//     });
+//   });
+// });
+
 fs.promises
   .readFile(filePath, 'utf8')
   .then((data) => {
