@@ -1,36 +1,72 @@
+const crypto = require("crypto");
+const util = require("util");
+const { userSchema } = require("../validation/userSchema");
+
+const scrypt = util.promisify(crypto.scrypt);
+
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await scrypt(password, salt, 64);
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+
+async function comparePassword(inputPassword, storedHash) {
+  const [salt, key] = storedHash.split(":");
+  const keyBuffer = Buffer.from(key, "hex");
+  const derivedKey = await scrypt(inputPassword, salt, 64);
+  return crypto.timingSafeEqual(keyBuffer, derivedKey);
+}
+
 /**
  * Registers a new user
- * @param {*} req 
- * @param {*} res 
+ * @param {*} req
+ * @param {*} res
  */
-function register(req, res) {
-  const { name, email, password } = req.body;
+async function register(req, res) {
+  if (!req.body) req.body = {};
 
-  const user = { name, email, password };
+  const { error, value } = userSchema.validate(req.body, {
+    abortEarly: false,
+  });
 
-  global.users.push(user);
-  global.user_id = user;
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const hashedPassword = await hashPassword(value.password);
+
+  const newUser = {
+    email: value.email,
+    name: value.name,
+    hashedPassword,
+  };
+
+  global.users.push(newUser);
+  global.user_id = newUser;
 
   res.status(201).json({
-    name: user.name,
-    email: user.email,
+    name: newUser.name,
+    email: newUser.email,
   });
 }
 
 /**
  * Logs in an existing user
- * @param {*} req 
- * @param {*} res 
- * @returns 
+ * @param {*} req
+ * @param {*} res
+ * @returns
  */
-function logon(req, res) {
+async function logon(req, res) {
   const { email, password } = req.body;
 
   const user = global.users.find(
-    (u) => u.email === email && u.password === password
+    (u) => u.email === email?.trim().toLowerCase(),
   );
 
-  if (!user) {
+  const goodCredentials =
+    user && (await comparePassword(password, user.hashedPassword));
+
+  if (!goodCredentials) {
     res.status(401).json({ message: "Invalid email or password" });
     return;
   }
@@ -45,8 +81,8 @@ function logon(req, res) {
 
 /**
  * Logs out the current user
- * @param {*} req 
- * @param {*} res 
+ * @param {*} req
+ * @param {*} res
  */
 function logoff(req, res) {
   global.user_id = null;
