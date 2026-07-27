@@ -13,6 +13,13 @@ function sanitizeTask(task) {
   return sanitizedTask;
 }
 
+function parseTaskId(rawId) {
+  if (!/^\d+$/.test(rawId ?? "")) {
+    return NaN;
+  }
+  return Number(rawId);
+}
+
 /**
  * Creates a new task owned by the logged-in user
  * @param {*} req
@@ -62,7 +69,7 @@ function index(req, res) {
  * @param {*} res
  */
 function show(req, res) {
-  const taskId = parseInt(req.params?.id);
+  const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }
@@ -93,7 +100,7 @@ function update(req, res) {
     return res.status(400).json({ message: error.message });
   }
 
-  const taskId = parseInt(req.params?.id);
+  const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }
@@ -117,7 +124,7 @@ function update(req, res) {
  * @param {*} res
  */
 function deleteTask(req, res) {
-  const taskId = parseInt(req.params?.id);
+  const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }

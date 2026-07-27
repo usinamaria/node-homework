@@ -11,9 +11,18 @@ async function hashPassword(password) {
 }
 
 async function comparePassword(inputPassword, storedHash) {
+  if (typeof storedHash !== "string" || !storedHash.includes(":")) {
+    return false;
+  }
+
   const [salt, key] = storedHash.split(":");
   const keyBuffer = Buffer.from(key, "hex");
   const derivedKey = await scrypt(inputPassword, salt, 64);
+
+  if (keyBuffer.length !== derivedKey.length) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(keyBuffer, derivedKey);
 }
 
