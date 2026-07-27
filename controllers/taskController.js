@@ -63,7 +63,7 @@ function index(req, res) {
  */
 function show(req, res) {
   const taskId = parseInt(req.params?.id);
-  if (!taskId) {
+  if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }
 
@@ -94,7 +94,7 @@ function update(req, res) {
   }
 
   const taskId = parseInt(req.params?.id);
-  if (!taskId) {
+  if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }
 
@@ -118,7 +118,7 @@ function update(req, res) {
  */
 function deleteTask(req, res) {
   const taskId = parseInt(req.params?.id);
-  if (!taskId) {
+  if (Number.isNaN(taskId)) {
     return res.status(400).json({ message: "The task ID passed is not valid." });
   }
 

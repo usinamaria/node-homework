@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const util = require("util");
-const { userSchema } = require("../validation/userSchema");
+const { userSchema, logonSchema } = require("../validation/userSchema");
 
 const scrypt = util.promisify(crypto.scrypt);
 
@@ -57,14 +57,20 @@ async function register(req, res) {
  * @returns
  */
 async function logon(req, res) {
-  const { email, password } = req.body;
+  if (!req.body) req.body = {};
 
-  const user = global.users.find(
-    (u) => u.email === email?.trim().toLowerCase(),
-  );
+  const { error, value } = logonSchema.validate(req.body, {
+    abortEarly: false,
+  });
+
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const user = global.users.find((u) => u.email === value.email);
 
   const goodCredentials =
-    user && (await comparePassword(password, user.hashedPassword));
+    user && (await comparePassword(value.password, user.hashedPassword));
 
   if (!goodCredentials) {
     res.status(401).json({ message: "Invalid email or password" });

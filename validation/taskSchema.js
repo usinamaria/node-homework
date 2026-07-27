@@ -6,8 +6,12 @@ const taskSchema = Joi.object({
 });
 
 const patchTaskSchema = Joi.object({
-  title: Joi.string().trim().min(3).max(30).not(null),
-  isCompleted: Joi.boolean().not(null),
-}).min(1).message("No attributes to change were specified.");
+  title: Joi.string().trim().min(3).max(30).optional(),
+  isCompleted: Joi.boolean().optional(),
+})
+  .min(1)
+  .messages({
+    "object.min": "No attributes to change were specified.",
+  });
 
 module.exports = { taskSchema, patchTaskSchema };
