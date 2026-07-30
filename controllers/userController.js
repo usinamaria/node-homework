@@ -75,9 +75,10 @@ async function register(req, res, next) {
  * Logs in an existing user
  * @param {*} req
  * @param {*} res
+ * @param {*} next
  * @returns
  */
-async function logon(req, res) {
+async function logon(req, res, next) {
   if (!req.body) req.body = {};
 
   const { error, value } = logonSchema.validate(req.body, {
@@ -88,9 +89,14 @@ async function logon(req, res) {
     return res.status(400).json({ message: error.message });
   }
 
-  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-    value.email,
-  ]);
+  let result = null;
+  try {
+    result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      value.email,
+    ]);
+  } catch (e) {
+    return next(e);
+  }
 
   if (result.rows.length === 0) {
     res.status(401).json({ message: "Invalid email or password" });
