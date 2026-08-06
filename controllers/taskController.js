@@ -81,7 +81,7 @@ async function show(req, res, next) {
 
   let task = null;
   try {
-    task = await prisma.task.findUniqueOrThrow({
+    task = await prisma.task.findUnique({
       where: {
         id: taskId,
         userId: global.user_id,
@@ -90,9 +90,13 @@ async function show(req, res, next) {
     });
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: "The task was not found." });
     }
     return next(err);
+  }
+
+  if (!task) {
+    return res.status(404).json({ message: "The task was not found." });
   }
 
   res.status(200).json(task);
@@ -131,7 +135,7 @@ async function update(req, res, next) {
     });
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: "The task was not found." });
     }
     return next(err);
   }
@@ -162,7 +166,7 @@ async function deleteTask(req, res, next) {
     });
   } catch (err) {
     if (err.code === "P2025") {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: "The task was not found." });
     }
     return next(err);
   }
