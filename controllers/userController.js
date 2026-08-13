@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const util = require("util");
 const { userSchema, logonSchema } = require("../validation/userSchema");
-const pool = require("../db/pg-pool");
+const prisma = require("../db/prisma");
 
 const scrypt = util.promisify(crypto.scrypt);
 
@@ -47,27 +47,27 @@ async function register(req, res, next) {
     });
   }
 
-  let user = null;
-  value.hashed_password = await hashPassword(value.password);
+  const hashedPassword = await hashPassword(value.password);
+  const { name, email } = value;
 
+  let user = null;
   try {
-    user = await pool.query(
-      `INSERT INTO users (email, name, hashed_password)
-      VALUES ($1, $2, $3) RETURNING id, email, name`,
-      [value.email, value.name, value.hashed_password],
-    );
-  } catch (e) {
-    if (e.code === "23505") {
+    user = await prisma.user.create({
+      data: { name, email, hashedPassword },
+      select: { name: true, email: true, id: true },
+    });
+  } catch (err) {
+    if (err.name === "PrismaClientKnownRequestError" && err.code === "P2002") {
       return res.status(400).json({ message: "Email is already registered" });
     }
-    return next(e);
+    return next(err);
   }
 
-  global.user_id = user.rows[0].id;
+  global.user_id = user.id;
 
   res.status(201).json({
-    name: user.rows[0].name,
-    email: user.rows[0].email,
+    name: user.name,
+    email: user.email,
   });
 }
 
@@ -89,25 +89,23 @@ async function logon(req, res, next) {
     return res.status(400).json({ message: error.message });
   }
 
-  let result = null;
+  const email = value.email.toLowerCase();
+
+  let user = null;
   try {
-    result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      value.email,
-    ]);
+    user = await prisma.user.findUnique({ where: { email } });
   } catch (e) {
     return next(e);
   }
 
-  if (result.rows.length === 0) {
+  if (!user) {
     res.status(401).json({ message: "Invalid email or password" });
     return;
   }
 
-  const user = result.rows[0];
-
   const goodCredentials = await comparePassword(
     value.password,
-    user.hashed_password,
+    user.hashedPassword,
   );
 
   if (!goodCredentials) {

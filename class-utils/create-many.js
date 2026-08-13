@@ -23,8 +23,7 @@ if (!user) {
         newTask.title = faker.lorem.sentence({ min: 3, max: 5 });
         newTask.userId = user.id;
         newTask.createdAt = getRandomDateTimeLast5Weeks();
-        newTask.isCompleted = (Math.random() > 0.5); 
-        newTask.priority = ["low","medium","high"][Math.floor(Math.random()*3)];
+        newTask.isCompleted = (Math.random() > 0.5);
         tasks.push(newTask);
         i++;
     }
