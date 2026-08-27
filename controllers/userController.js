@@ -63,18 +63,22 @@ async function register(req, res, next) {
     params.append("secret", process.env.RECAPTCHA_SECRET);
     params.append("response", token);
     params.append("remoteip", req.ip);
-    const response = await fetch(
-      // might throw an error that would cause a 500 from the error handler
-      "https://www.google.com/recaptcha/api/siteverify",
-      {
-        method: "POST",
-        body: params.toString(),
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+    let data;
+    try {
+      const response = await fetch(
+        "https://www.google.com/recaptcha/api/siteverify",
+        {
+          method: "POST",
+          body: params.toString(),
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         },
-      },
-    );
-    const data = await response.json();
+      );
+      data = await response.json();
+    } catch (err) {
+      return next(err); // the fetch to Google failed; let the error handler deal with it
+    }
     if (data.success) isPerson = true;
     delete req.body.recaptchaToken;
   } else if (
