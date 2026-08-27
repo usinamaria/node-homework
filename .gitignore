@@ -22,3 +22,8 @@ package-lock.json
 .DS_Store?
 
 /generated/prisma
+
+# ===========================================
+# Test Coverage Reports
+# ===========================================
+coverage/
