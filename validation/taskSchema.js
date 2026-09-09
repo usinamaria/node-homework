@@ -31,4 +31,9 @@ const bulkUpdateSchema = Joi.object({
     "object.missing": "No attributes to change were specified.",
   });
 
-module.exports = { taskSchema, patchTaskSchema, bulkIdsSchema, bulkUpdateSchema };
+module.exports = {
+  taskSchema,
+  patchTaskSchema,
+  bulkIdsSchema,
+  bulkUpdateSchema,
+};

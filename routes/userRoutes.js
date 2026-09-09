@@ -1,6 +1,11 @@
-const express = require('express');
-const { logon, register, googleLogon, logoff } = require('../controllers/userController');
-const jwtMiddleware = require('../middleware/jwtMiddleware');
+const express = require("express");
+const {
+  logon,
+  register,
+  googleLogon,
+  logoff,
+} = require("../controllers/userController");
+const jwtMiddleware = require("../middleware/jwtMiddleware");
 
 const router = express.Router();
 
@@ -62,7 +67,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/register', register);
+router.post("/register", register);
 
 /**
  * @openapi
@@ -114,7 +119,7 @@ router.post('/register', register);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/logon', logon);
+router.post("/logon", logon);
 
 /**
  * @openapi
@@ -167,7 +172,7 @@ router.post('/logon', logon);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/googleLogon', googleLogon);
+router.post("/googleLogon", googleLogon);
 
 /**
  * @openapi
@@ -189,6 +194,6 @@ router.post('/googleLogon', googleLogon);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/logoff', jwtMiddleware, logoff);
+router.post("/logoff", jwtMiddleware, logoff);
 
 module.exports = router;

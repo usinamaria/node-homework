@@ -1,4 +1,9 @@
-const { taskSchema, patchTaskSchema, bulkIdsSchema, bulkUpdateSchema } = require("../validation/taskSchema");
+const {
+  taskSchema,
+  patchTaskSchema,
+  bulkIdsSchema,
+  bulkUpdateSchema,
+} = require("../validation/taskSchema");
 const { paginationSchema } = require("../validation/paginationSchema");
 const { logSchema } = require("../validation/logSchema");
 const prisma = require("../db/prisma");
@@ -11,7 +16,13 @@ function parseTaskId(rawId) {
 }
 
 function getOrderBy(query) {
-  const validSortFields = ["title", "priority", "createdAt", "id", "isCompleted"];
+  const validSortFields = [
+    "title",
+    "priority",
+    "createdAt",
+    "id",
+    "isCompleted",
+  ];
   const sortBy = query.sortBy || "createdAt";
   const sortDirection = query.sortDirection === "asc" ? "asc" : "desc";
 
@@ -51,7 +62,10 @@ function buildTaskFilterWhereClause(req) {
 
   const minDate = req.query.min_date ? new Date(req.query.min_date) : null;
   const maxDate = req.query.max_date ? new Date(req.query.max_date) : null;
-  if ((minDate && !Number.isNaN(minDate.getTime())) || (maxDate && !Number.isNaN(maxDate.getTime()))) {
+  if (
+    (minDate && !Number.isNaN(minDate.getTime())) ||
+    (maxDate && !Number.isNaN(maxDate.getTime()))
+  ) {
     whereClause.createdAt = {};
     if (minDate && !Number.isNaN(minDate.getTime())) {
       whereClause.createdAt.gte = minDate;
@@ -177,7 +191,9 @@ async function bulkUpdateByIds(req, res, next) {
     return next(e);
   }
 
-  res.status(200).json({ message: "Bulk update successful", tasksUpdated: result.count });
+  res
+    .status(200)
+    .json({ message: "Bulk update successful", tasksUpdated: result.count });
 }
 
 /**
@@ -205,7 +221,9 @@ async function bulkDeleteByIds(req, res, next) {
     return next(e);
   }
 
-  res.status(200).json({ message: "Bulk delete successful", tasksDeleted: result.count });
+  res
+    .status(200)
+    .json({ message: "Bulk delete successful", tasksDeleted: result.count });
 }
 
 /**
@@ -215,10 +233,11 @@ async function bulkDeleteByIds(req, res, next) {
  * @param {*} next
  */
 async function index(req, res, next) {
-  const { error: paginationError, value: paginationValue } = paginationSchema.validate({
-    page: req.query.page,
-    limit: req.query.limit,
-  });
+  const { error: paginationError, value: paginationValue } =
+    paginationSchema.validate({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
   if (paginationError) {
     return res.status(400).json({ message: paginationError.message });
   }
@@ -293,7 +312,8 @@ async function updateByFilter(req, res, next) {
   const { whereClause, hasFilter } = buildTaskFilterWhereClause(req);
   if (!hasFilter) {
     return res.status(400).json({
-      message: "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
+      message:
+        "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
     });
   }
 
@@ -304,7 +324,9 @@ async function updateByFilter(req, res, next) {
     return next(e);
   }
 
-  res.status(200).json({ message: "Bulk update successful", tasksUpdated: result.count });
+  res
+    .status(200)
+    .json({ message: "Bulk update successful", tasksUpdated: result.count });
 }
 
 /**
@@ -318,7 +340,8 @@ async function deleteByFilter(req, res, next) {
   const { whereClause, hasFilter } = buildTaskFilterWhereClause(req);
   if (!hasFilter) {
     return res.status(400).json({
-      message: "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
+      message:
+        "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
     });
   }
 
@@ -329,7 +352,9 @@ async function deleteByFilter(req, res, next) {
     return next(e);
   }
 
-  res.status(200).json({ message: "Bulk delete successful", tasksDeleted: result.count });
+  res
+    .status(200)
+    .json({ message: "Bulk delete successful", tasksDeleted: result.count });
 }
 
 /**
@@ -342,7 +367,9 @@ async function deleteByFilter(req, res, next) {
 async function show(req, res, next) {
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   const includeLogs = req.query.include === "logs";
@@ -399,7 +426,9 @@ async function update(req, res, next) {
 
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   let updatedTask = null;
@@ -431,7 +460,9 @@ async function update(req, res, next) {
 async function deleteTask(req, res, next) {
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   let deletedTask = null;
@@ -464,7 +495,9 @@ async function addLog(req, res, next) {
 
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   const { error, value } = logSchema.validate(req.body, {

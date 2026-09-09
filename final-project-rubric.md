@@ -12,7 +12,8 @@
 
 \[ \] Models for at least task and user records, with a one to many association between users and tasks.
 
-\[ \] Implementation of security measures, including: 
+\[ \] Implementation of security measures, including:
+
 - Protection for all task operations and for logoff.
 - Passwords stored as hashes.
 - Standard security protections for authentication and access control, protection against cross-site request forgery, secure handling of JWT authentication tokens (e.g., HTTP-only cookies or authorization headers), protection against injection attacks, and other best practices described in the class.
@@ -29,12 +30,13 @@
 \[ \] Validation that the deployed back end application works as expected.
 
 \[ \] Follow best practice on the organization of Express code modules and use of Eslint and Prettier.
-  - For ESLint and Prettier setup guidance, see: [ESLint/Prettier Setup Video](https://www.youtube.com/watch?v=IRdPRIPd9FM)
 
-\[ \] Extra function: One or several additions to make your project stand out.  Here are some suggestions.  Just a couple of these would suffice.  Please choose something that doesn't involve a front end change.  You can test and demonstrate these changes with Postman.
+- For ESLint and Prettier setup guidance, see: [ESLint/Prettier Setup Video](https://www.youtube.com/watch?v=IRdPRIPd9FM)
 
-- Allow users to be configured with a role, and implement an API that requires this role.  For example, a "boss" role could see all tasks, regardless of which user owns them.
-- Logon using a Google button.  This one actually involves a front end change, but the front end part is provided for you.
+\[ \] Extra function: One or several additions to make your project stand out. Here are some suggestions. Just a couple of these would suffice. Please choose something that doesn't involve a front end change. You can test and demonstrate these changes with Postman.
+
+- Allow users to be configured with a role, and implement an API that requires this role. For example, a "boss" role could see all tasks, regardless of which user owns them.
+- Logon using a Google button. This one actually involves a front end change, but the front end part is provided for you.
 - Swagger documentation for the API, with an automatically generated UI built from Swagger.
 - Organizing tasks into folders.
 - An update many tasks operation, where a user could mark many tasks completed with one REST request.
@@ -44,7 +46,7 @@
 - Log records, so that a user can log a series of status records for any given task, to indicate progress.
 - Use your imagination!
 
-Please don't spend time on React front end appearance.  That is not the purpose of this class.
+Please don't spend time on React front end appearance. That is not the purpose of this class.
 
 ## Project Demo Details
 
@@ -55,6 +57,7 @@ It is good practice to talk about what you have learned and know about project a
 \[ \] User registration and/or login.
 
 \[ \] The application's CRUD functionality:
+
 - Create data.
 - Read data.
 - Update data.

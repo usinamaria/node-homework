@@ -27,7 +27,12 @@ beforeAll(async () => {
   await prisma.user.deleteMany();
   const hashedPassword = await hashPassword(PASSWORD);
   await prisma.user.create({
-    data: { name: "Maria Manager", email: "manager@example.com", hashedPassword, roles: "manager" },
+    data: {
+      name: "Maria Manager",
+      email: "manager@example.com",
+      hashedPassword,
+      roles: "manager",
+    },
   });
   await prisma.user.create({
     data: { name: "Sam Staff", email: "staff@example.com", hashedPassword },

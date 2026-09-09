@@ -17,7 +17,7 @@ const googleClient = new OAuth2Client(
   process.env.GOOGLE_REDIRECT_URI || "postmessage",
 );
 
-const cookieFlags = (req) => {
+const cookieFlags = () => {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // only when HTTPS is available
@@ -33,7 +33,7 @@ const setJwtCookie = (req, res, user) => {
   }
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
   // Set cookie.  Note that the cookie flags have to be different in production and in test.
-  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
+  res.cookie("jwt", token, { ...cookieFlags(), maxAge: 3600000 }); // 1 hour expiration
   return payload.csrfToken; // this is needed in the body returned by logon() or register()
 };
 
@@ -103,7 +103,9 @@ async function register(req, res, next) {
   if (!isPerson) {
     return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ message: "Bot verification failed. Please complete the reCAPTCHA." });
+      .json({
+        message: "Bot verification failed. Please complete the reCAPTCHA.",
+      });
   }
 
   const { error, value } = userSchema.validate(req.body, {
@@ -128,7 +130,11 @@ async function register(req, res, next) {
       });
 
       const welcomeTaskData = [
-        { title: "Complete your profile", userId: newUser.id, priority: "medium" },
+        {
+          title: "Complete your profile",
+          userId: newUser.id,
+          priority: "medium",
+        },
         { title: "Add your first task", userId: newUser.id, priority: "high" },
         { title: "Explore the app", userId: newUser.id, priority: "low" },
       ];
@@ -192,7 +198,13 @@ async function logon(req, res, next) {
   try {
     user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, name: true, email: true, hashedPassword: true, roles: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        hashedPassword: true,
+        roles: true,
+      },
     });
   } catch (e) {
     return next(e);
@@ -293,7 +305,7 @@ async function googleLogon(req, res, next) {
  * @param {*} res
  */
 function logoff(req, res) {
-  res.clearCookie("jwt", cookieFlags(req));
+  res.clearCookie("jwt", cookieFlags());
   res.status(200).send();
 }
 

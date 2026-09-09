@@ -35,36 +35,36 @@ All task and analytics routes require authentication (the `jwt` cookie set by lo
 
 **Users** (`/api/users`)
 
-| Method | Route | Description |
-| --- | --- | --- |
-| POST | `/register` | Register a new user (requires reCAPTCHA verification), auto-creates 3 welcome tasks, logs the user in |
-| POST | `/logon` | Log in and receive a JWT cookie + CSRF token |
-| POST | `/googleLogon` | Log in (or auto-register) via a Google OAuth authorization code; sets a JWT cookie |
-| POST | `/logoff` | Clear the JWT cookie (auth required) |
+| Method | Route          | Description                                                                                           |
+| ------ | -------------- | ----------------------------------------------------------------------------------------------------- |
+| POST   | `/register`    | Register a new user (requires reCAPTCHA verification), auto-creates 3 welcome tasks, logs the user in |
+| POST   | `/logon`       | Log in and receive a JWT cookie + CSRF token                                                          |
+| POST   | `/googleLogon` | Log in (or auto-register) via a Google OAuth authorization code; sets a JWT cookie                    |
+| POST   | `/logoff`      | Clear the JWT cookie (auth required)                                                                  |
 
 **Tasks** (`/api/tasks`, auth required)
 
-| Method | Route | Description |
-| --- | --- | --- |
-| GET | `/` | List the logged-in user's tasks — supports pagination, filtering (`find`, `isCompleted`, `priority`, `min_date`, `max_date`), and sorting |
-| POST | `/` | Create a task |
-| PATCH | `/` | Bulk-update every task matching filter query parameters (at least one filter required) |
-| DELETE | `/` | Bulk-delete every task matching filter query parameters (at least one filter required) |
-| POST | `/bulk` | Create multiple tasks in one request |
-| PATCH | `/bulk` | Bulk-update tasks by an `{ ids: [...] }` array in the body |
-| DELETE | `/bulk` | Bulk-delete tasks by an `{ ids: [...] }` array in the body |
-| GET | `/:id` | Get a single task (pass `?include=logs` to include its progress log entries) |
-| PATCH | `/:id` | Update a single task |
-| DELETE | `/:id` | Delete a single task (cascades to delete its log entries) |
-| POST | `/:id/logs` | Add a progress log entry to a task |
+| Method | Route       | Description                                                                                                                               |
+| ------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/`         | List the logged-in user's tasks — supports pagination, filtering (`find`, `isCompleted`, `priority`, `min_date`, `max_date`), and sorting |
+| POST   | `/`         | Create a task                                                                                                                             |
+| PATCH  | `/`         | Bulk-update every task matching filter query parameters (at least one filter required)                                                    |
+| DELETE | `/`         | Bulk-delete every task matching filter query parameters (at least one filter required)                                                    |
+| POST   | `/bulk`     | Create multiple tasks in one request                                                                                                      |
+| PATCH  | `/bulk`     | Bulk-update tasks by an `{ ids: [...] }` array in the body                                                                                |
+| DELETE | `/bulk`     | Bulk-delete tasks by an `{ ids: [...] }` array in the body                                                                                |
+| GET    | `/:id`      | Get a single task (pass `?include=logs` to include its progress log entries)                                                              |
+| PATCH  | `/:id`      | Update a single task                                                                                                                      |
+| DELETE | `/:id`      | Delete a single task (cascades to delete its log entries)                                                                                 |
+| POST   | `/:id/logs` | Add a progress log entry to a task                                                                                                        |
 
 **Analytics** (`/api/analytics`, auth required, **manager role required**)
 
-| Method | Route | Description |
-| --- | --- | --- |
-| GET | `/users/:id` | Task completion stats, recent tasks, and weekly progress for a user |
-| GET | `/users` | All users with task counts (paginated) |
-| GET | `/tasks/search` | Full-text-style search across task titles and user names |
+| Method | Route           | Description                                                         |
+| ------ | --------------- | ------------------------------------------------------------------- |
+| GET    | `/users/:id`    | Task completion stats, recent tasks, and weekly progress for a user |
+| GET    | `/users`        | All users with task counts (paginated)                              |
+| GET    | `/tasks/search` | Full-text-style search across task titles and user names            |
 
 Every route above (and each request/response shape) is also documented interactively in the Swagger UI at `/api-docs`.
 

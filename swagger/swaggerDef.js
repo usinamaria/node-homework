@@ -38,7 +38,11 @@ const options = {
           properties: {
             id: { type: "integer", example: 1 },
             name: { type: "string", example: "Jane Doe" },
-            email: { type: "string", format: "email", example: "jane@example.com" },
+            email: {
+              type: "string",
+              format: "email",
+              example: "jane@example.com",
+            },
             createdAt: { type: "string", format: "date-time" },
           },
         },
@@ -48,7 +52,11 @@ const options = {
             id: { type: "integer", example: 1 },
             title: { type: "string", example: "Buy groceries" },
             isCompleted: { type: "boolean", example: false },
-            priority: { type: "string", enum: ["low", "medium", "high"], example: "medium" },
+            priority: {
+              type: "string",
+              enum: ["low", "medium", "high"],
+              example: "medium",
+            },
             createdAt: { type: "string", format: "date-time" },
           },
         },
@@ -57,7 +65,10 @@ const options = {
           properties: {
             id: { type: "integer", example: 1 },
             taskId: { type: "integer", example: 1 },
-            status: { type: "string", example: "Started researching the API design." },
+            status: {
+              type: "string",
+              example: "Started researching the API design.",
+            },
             createdAt: { type: "string", format: "date-time" },
           },
         },

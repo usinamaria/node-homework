@@ -172,7 +172,10 @@ describe("Assignment 2a: Core Events, HTTP, and Express", () => {
     });
 
     test("controllers/timeController.js should export time handlers", () => {
-      const controllerPath = path.join(rootDir, "controllers/timeController.js");
+      const controllerPath = path.join(
+        rootDir,
+        "controllers/timeController.js",
+      );
       expect(fs.existsSync(controllerPath)).toBe(true);
 
       const timeController = require(controllerPath);

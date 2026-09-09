@@ -4,12 +4,22 @@ const globals = require("globals");
 const pluginJest = require("eslint-plugin-jest");
 
 module.exports = defineConfig([
-  { files: ["**/*.{js,mjs,cjs}"], plugins: { js }, extends: ["js/recommended"] },
-  { files: ["**/*.js"], languageOptions: { sourceType: "commonjs", globals: { ...globals.node} } },
-  { files: ["**/*.{js,mjs,cjs}"], languageOptions: { globals: globals.browser } },
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    plugins: { js },
+    extends: ["js/recommended"],
+  },
+  {
+    files: ["**/*.js"],
+    languageOptions: { sourceType: "commonjs", globals: { ...globals.node } },
+  },
+  {
+    files: ["**/*.{js,mjs,cjs}"],
+    languageOptions: { globals: globals.browser },
+  },
   {
     // update this to match your test files
-    files: ["**/*.spec.js", "**/*.test.js"],
+    files: ["**/*.spec.js", "**/*.test.js", "test/**/*.js"],
     plugins: { jest: pluginJest },
     languageOptions: {
       globals: pluginJest.environments.globals.globals,
