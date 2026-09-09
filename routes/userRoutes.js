@@ -1,5 +1,5 @@
 const express = require('express');
-const { logon, register, logoff } = require('../controllers/userController');
+const { logon, register, googleLogon, logoff } = require('../controllers/userController');
 const jwtMiddleware = require('../middleware/jwtMiddleware');
 
 const router = express.Router();
@@ -115,6 +115,59 @@ router.post('/register', register);
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/logon', logon);
+
+/**
+ * @openapi
+ * /api/users/googleLogon:
+ *   post:
+ *     summary: Log in (or register) via Google OAuth
+ *     description: >
+ *       Exchanges a Google OAuth authorization code obtained by the front end for the
+ *       user's Google identity, finds or creates a matching user record, and sets a
+ *       JWT cookie for subsequent authenticated requests.
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code]
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: >
+ *                   The authorization code returned by Google's OAuth consent flow
+ *                   (this is the field name the class's sample front end sends;
+ *                   `authorizationCode` is also accepted as an alias).
+ *     responses:
+ *       200:
+ *         description: Login successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 csrfToken:
+ *                   type: string
+ *       400:
+ *         description: code (or authorizationCode) was not supplied.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Google could not verify the authorization code.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/googleLogon', googleLogon);
 
 /**
  * @openapi

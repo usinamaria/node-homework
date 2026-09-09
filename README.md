@@ -39,6 +39,7 @@ All task and analytics routes require authentication (the `jwt` cookie set by lo
 | --- | --- | --- |
 | POST | `/register` | Register a new user (requires reCAPTCHA verification), auto-creates 3 welcome tasks, logs the user in |
 | POST | `/logon` | Log in and receive a JWT cookie + CSRF token |
+| POST | `/googleLogon` | Log in (or auto-register) via a Google OAuth authorization code; sets a JWT cookie |
 | POST | `/logoff` | Clear the JWT cookie (auth required) |
 
 **Tasks** (`/api/tasks`, auth required)
@@ -79,9 +80,25 @@ In addition to the `DB_URL`, `DATABASE_URL`, and `TEST_DATABASE_URL` values desc
 JWT_SECRET=<a long random string used to sign JWTs>
 RECAPTCHA_SECRET=<your Google reCAPTCHA v2 secret key>
 RECAPTCHA_BYPASS=<a shared secret used only in local/test environments to skip live reCAPTCHA verification>
+GOOGLE_CLIENT_ID=<your Google OAuth client ID>
+GOOGLE_CLIENT_SECRET=<your Google OAuth client secret>
+GOOGLE_REDIRECT_URI=<optional; defaults to "postmessage" for popup-based front ends>
 ```
 
 `RECAPTCHA_BYPASS` lets automated tests and local development register users without a real reCAPTCHA token: send the header `X-Recaptcha-Test: <the same value>` on `POST /api/users/register` instead of a `recaptchaToken`.
+
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` come from a Google Cloud OAuth client (Google Cloud Console → APIs & Services → Credentials → OAuth client ID, of type "Web application"), and must match the client ID the front end uses to obtain an authorization code. `GOOGLE_REDIRECT_URI` only needs to be set if the front end performs a real page redirect rather than a popup-based flow — it must exactly match the redirect URI configured on the OAuth client.
+
+### Google OAuth Logon
+
+`POST /api/users/googleLogon` implements the "Login with Google" flow described in the class's final-project rubric:
+
+1. The front end obtains an authorization code from Google (e.g. via `@react-oauth/google`'s `useGoogleLogin({ flow: 'auth-code' })`) and sends it as `{ "code": "..." }` (the field name the class's sample front end actually uses; `authorizationCode` is also accepted).
+2. The backend exchanges that code for tokens with Google (`google-auth-library`'s `OAuth2Client.getToken`), then verifies the returned id token (`verifyIdToken`) to get the user's verified name and email.
+3. If no user exists with that email, one is created with a random, unusable placeholder password hash (Google-authenticated users never log on with a password).
+4. The backend sets the same JWT cookie and returns the same `{ name, email, csrfToken }` shape as `/api/users/logon`, so the rest of the app treats a Google-authenticated session identically to a password-authenticated one.
+
+Because this flow depends on a live authorization code from Google and the actual front end, it's only practically testable end-to-end through the real front end (as noted in the class materials) — automated tests here only cover the request-validation path (missing `code`).
 
 ### Running the Project
 
@@ -112,6 +129,7 @@ If only `npm install` runs (without `prisma generate`), the deployed app can thr
 Beyond the core CRUD/auth requirements, this project includes several of the final-project "extra function" ideas:
 
 - **Swagger/OpenAPI documentation** — full interactive API docs at `/api-docs`.
+- **Google OAuth logon** — `POST /api/users/googleLogon` lets a user log in (or auto-register) with their Google identity instead of a password.
 - **Role-based access control** — an optional `manager` role, carried in the JWT, gating the analytics endpoints.
 - **Progress logs** — a `Log` model letting a user record a series of status updates for a task, with cascading delete so removing a task doesn't hit a foreign-key error.
 - **Bulk update/delete by filter** — `PATCH`/`DELETE /api/tasks` acting on every task matching query parameters like `?isCompleted=true`.
