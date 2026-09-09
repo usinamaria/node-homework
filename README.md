@@ -6,6 +6,118 @@ In this course, you will write JavaScript that runs outside the browser. You wil
 
 This README helps you set up your computer for the course. You do not need to understand every tool deeply yet. The goal is to install the tools, connect them, and make sure your `node-homework` repository is ready for assignments.
 
+## About This Project
+
+This repository has grown, assignment by assignment, into a full Task List REST API built with Node.js, Express, and Prisma, backed by PostgreSQL. It is the Code the Dream Node/Express class final project.
+
+- **Live deployment:** [https://node-homework-ibwz.onrender.com](https://node-homework-ibwz.onrender.com) (Render, connected to a Neon.tech Postgres database)
+- **API documentation:** once the server is running, interactive Swagger docs are available at `/api-docs` (e.g. `http://localhost:3000/api-docs` locally)
+
+### Tech Stack
+
+- **Runtime/Framework:** Node.js, Express 5
+- **Database/ORM:** PostgreSQL, [Prisma](https://www.prisma.io/) (`prisma/schema.prisma`, migrations in `prisma/migrations/`)
+- **Auth:** JSON Web Tokens in an HttpOnly cookie, with a CSRF token required (via the `X-CSRF-TOKEN` header) on state-changing requests
+- **Validation:** [Joi](https://joi.dev/) schemas in `validation/`
+- **Security middleware:** `helmet`, `express-rate-limit`, `express-xss-sanitizer`, Google reCAPTCHA verification on registration
+- **API docs:** `swagger-jsdoc` + `swagger-ui-express`, served at `/api-docs`
+- **Testing:** Jest + Supertest + `node-mocks-http`, run against a local PostgreSQL test database
+
+### Data Model
+
+- **User** — `id`, `name`, `email`, `hashedPassword`, `roles` (optional comma-delimited list, e.g. `"manager"`), `createdAt`. A user has many tasks.
+- **Task** — `id`, `title`, `isCompleted`, `priority` (`low`/`medium`/`high`), `userId`, `createdAt`. A task belongs to a user and has many log entries.
+- **Log** — `id`, `taskId`, `status`, `createdAt`. A progress log entry for a task; deleting a task cascades to delete its log entries.
+
+### API Overview
+
+All task and analytics routes require authentication (the `jwt` cookie set by logon/registration). State-changing requests (`POST`/`PATCH`/`PUT`/`DELETE`) also require the `X-CSRF-TOKEN` header, using the token returned by logon/registration.
+
+**Users** (`/api/users`)
+
+| Method | Route | Description |
+| --- | --- | --- |
+| POST | `/register` | Register a new user (requires reCAPTCHA verification), auto-creates 3 welcome tasks, logs the user in |
+| POST | `/logon` | Log in and receive a JWT cookie + CSRF token |
+| POST | `/logoff` | Clear the JWT cookie (auth required) |
+
+**Tasks** (`/api/tasks`, auth required)
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/` | List the logged-in user's tasks — supports pagination, filtering (`find`, `isCompleted`, `priority`, `min_date`, `max_date`), and sorting |
+| POST | `/` | Create a task |
+| PATCH | `/` | Bulk-update every task matching filter query parameters (at least one filter required) |
+| DELETE | `/` | Bulk-delete every task matching filter query parameters (at least one filter required) |
+| POST | `/bulk` | Create multiple tasks in one request |
+| PATCH | `/bulk` | Bulk-update tasks by an `{ ids: [...] }` array in the body |
+| DELETE | `/bulk` | Bulk-delete tasks by an `{ ids: [...] }` array in the body |
+| GET | `/:id` | Get a single task (pass `?include=logs` to include its progress log entries) |
+| PATCH | `/:id` | Update a single task |
+| DELETE | `/:id` | Delete a single task (cascades to delete its log entries) |
+| POST | `/:id/logs` | Add a progress log entry to a task |
+
+**Analytics** (`/api/analytics`, auth required, **manager role required**)
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/users/:id` | Task completion stats, recent tasks, and weekly progress for a user |
+| GET | `/users` | All users with task counts (paginated) |
+| GET | `/tasks/search` | Full-text-style search across task titles and user names |
+
+Every route above (and each request/response shape) is also documented interactively in the Swagger UI at `/api-docs`.
+
+### Role-Based Access Control
+
+Users may optionally be given a `roles` value (a comma-delimited string, e.g. `"manager"`) directly in the database — for example via Prisma Studio (`npx prisma studio`). When present, the role travels in the signed JWT and is exposed as `req.user.roles` after `jwtMiddleware` runs. The `/api/analytics` routes are gated by a `requireManager` middleware that returns `401` unless `"manager"` is present in the caller's roles.
+
+### Environment Variables
+
+In addition to the `DB_URL`, `DATABASE_URL`, and `TEST_DATABASE_URL` values described later in this README, the final project also needs:
+
+```text
+JWT_SECRET=<a long random string used to sign JWTs>
+RECAPTCHA_SECRET=<your Google reCAPTCHA v2 secret key>
+RECAPTCHA_BYPASS=<a shared secret used only in local/test environments to skip live reCAPTCHA verification>
+```
+
+`RECAPTCHA_BYPASS` lets automated tests and local development register users without a real reCAPTCHA token: send the header `X-Recaptcha-Test: <the same value>` on `POST /api/users/register` instead of a `recaptchaToken`.
+
+### Running the Project
+
+```bash
+npm install          # install dependencies
+npx prisma migrate dev   # apply Prisma migrations to your local DATABASE_URL
+npm run dev           # start the server with nodemon (http://localhost:3000)
+```
+
+Run the automated test suite (uses `TEST_DATABASE_URL`, a separate local Postgres database):
+
+```bash
+npm test
+```
+
+### Deploying to Render
+
+The app is deployed to [Render](https://render.com), using a [Neon.tech](https://neon.tech) Postgres database as `DATABASE_URL`. Because this project uses Prisma, the Render build command needs to both regenerate the Prisma Client and apply pending migrations, not just run `npm install`:
+
+```bash
+npm install --production && npx prisma generate && npx prisma migrate deploy
+```
+
+If only `npm install` runs (without `prisma generate`), the deployed app can throw confusing errors like `Unknown argument 'someField'` even though the column already exists in the database, because the generated Prisma Client is out of date.
+
+### Extra Features Implemented
+
+Beyond the core CRUD/auth requirements, this project includes several of the final-project "extra function" ideas:
+
+- **Swagger/OpenAPI documentation** — full interactive API docs at `/api-docs`.
+- **Role-based access control** — an optional `manager` role, carried in the JWT, gating the analytics endpoints.
+- **Progress logs** — a `Log` model letting a user record a series of status updates for a task, with cascading delete so removing a task doesn't hit a foreign-key error.
+- **Bulk update/delete by filter** — `PATCH`/`DELETE /api/tasks` acting on every task matching query parameters like `?isCompleted=true`.
+- **Bulk update/delete by id array** — `PATCH`/`DELETE /api/tasks/bulk` acting on a specific set of task ids.
+- **Pagination, filtering, and sorting** of the task list, and cross-user analytics/search endpoints.
+
 ## What You Will Install
 
 You will need these tools:
