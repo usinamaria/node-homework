@@ -12,6 +12,7 @@ model User {
   email          String   @unique @db.VarChar(255)
   name           String   @db.VarChar(30)
   hashedPassword String   @map("hashed_password") @db.VarChar(255)
+  roles          String?  @db.VarChar(255)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   Task           Task[]
 
@@ -26,7 +27,18 @@ model Task {
   userId      Int      @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   User        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Log         Log[]
 
   @@unique([id, userId])
   @@map("tasks")
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  status    String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  Task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("logs")
 }

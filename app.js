@@ -4,11 +4,14 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const { xss } = require("express-xss-sanitizer");
 const rateLimiter = require("express-rate-limit");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger/swaggerDef");
 const timeRouter = require("./routes/timeRoutes");
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
 const analyticsRouter = require("./routes/analyticsRoutes");
 const jwtMiddleware = require("./middleware/jwtMiddleware");
+const requireManager = require("./middleware/requireManager");
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
 const prisma = require("./db/prisma");
@@ -22,6 +25,10 @@ app.use(
     max: 100, // limit each IP to 100 requests per windowMs
   }),
 );
+
+// Mounted ahead of helmet() so its default CSP doesn't block Swagger UI's inline assets.
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.use(helmet());
 
 app.use(express.json({ limit: "1mb" }));
@@ -50,7 +57,7 @@ app.post("/testpost", (req, res) => {
 app.use("/api", timeRouter);
 app.use("/api/users", userRouter);
 app.use("/api/tasks", jwtMiddleware, taskRouter);
-app.use("/api/analytics", jwtMiddleware, analyticsRouter);
+app.use("/api/analytics", jwtMiddleware, requireManager, analyticsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

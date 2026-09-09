@@ -19,6 +19,9 @@ const cookieFlags = (req) => {
 const setJwtCookie = (req, res, user) => {
   // Sign JWT
   const payload = { id: user.id, csrfToken: randomUUID() };
+  if (user.roles) {
+    payload.roles = user.roles; // comma-delimited list, e.g. "manager"
+  }
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
   // Set cookie.  Note that the cookie flags have to be different in production and in test.
   res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
@@ -180,7 +183,7 @@ async function logon(req, res, next) {
   try {
     user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, name: true, email: true, hashedPassword: true },
+      select: { id: true, name: true, email: true, hashedPassword: true, roles: true },
     });
   } catch (e) {
     return next(e);
