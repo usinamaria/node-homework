@@ -29,6 +29,12 @@ app.use(
 // Mounted ahead of helmet() so its default CSP doesn't block Swagger UI's inline assets.
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Raw OpenAPI JSON -- import this URL directly into Postman (Import -> Link),
+// or into any other Swagger/OpenAPI-aware tool.
+app.get("/api-docs.json", (req, res) => {
+  res.json(swaggerSpec);
+});
+
 app.use(helmet());
 
 app.use(express.json({ limit: "1mb" }));
