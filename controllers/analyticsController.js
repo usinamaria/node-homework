@@ -10,7 +10,9 @@ const { paginationSchema } = require("../validation/paginationSchema");
 async function getUserAnalytics(req, res, next) {
   const userId = parseInt(req.params.id, 10);
   if (Number.isNaN(userId)) {
-    return res.status(400).json({ message: "The user ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The user ID passed is not valid." });
   }
 
   try {
@@ -72,10 +74,11 @@ async function getUserAnalytics(req, res, next) {
  * @param {*} next
  */
 async function getUsersWithStats(req, res, next) {
-  const { error: paginationError, value: paginationValue } = paginationSchema.validate({
-    page: req.query.page,
-    limit: req.query.limit,
-  });
+  const { error: paginationError, value: paginationValue } =
+    paginationSchema.validate({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
   if (paginationError) {
     return res.status(400).json({ message: paginationError.message });
   }
@@ -139,7 +142,9 @@ async function searchTasks(req, res, next) {
 
   const limit = req.query.limit === undefined ? 20 : parseInt(req.query.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-    return res.status(400).json({ error: "limit must be an integer between 1 and 100" });
+    return res
+      .status(400)
+      .json({ error: "limit must be an integer between 1 and 100" });
   }
 
   const searchPattern = `%${searchQuery}%`;

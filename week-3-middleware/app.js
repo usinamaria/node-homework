@@ -17,7 +17,7 @@ app.use((req, res, next) => {
 // middleware to log the request method, path, and timestamp
 app.use((req, res, next) => {
   console.log(
-    `[${new Date().toISOString()}]: ${req.method} ${req.path} (${req.requestId})`
+    `[${new Date().toISOString()}]: ${req.method} ${req.path} (${req.requestId})`,
   );
   next();
 });
@@ -44,7 +44,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/", dogsRouter);// Do not remove this line
+app.use("/", dogsRouter); // Do not remove this line
 
 // 404 handler
 app.use((req, res) => {
@@ -77,4 +77,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-

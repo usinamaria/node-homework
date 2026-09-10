@@ -27,7 +27,11 @@ beforeAll(async () => {
     data: { name: "Bob", email: "bob@sample.com", hashedPassword: "nonsense" },
   });
   user2 = await prisma.user.create({
-    data: { name: "Alice", email: "alice@sample.com", hashedPassword: "nonsense" },
+    data: {
+      name: "Alice",
+      email: "alice@sample.com",
+      hashedPassword: "nonsense",
+    },
   });
 });
 
@@ -110,7 +114,7 @@ describe("test getting created tasks", () => {
   });
   it("22. The returned object has a tasks array of length 1.", () => {
     saveData = saveRes._getJSONData(); // reusing saveRes
-    expect(saveData.tasks.length).toBe(1);
+    expect(saveData.tasks).toHaveLength(1);
   });
   it("23. The title in the first array object is as expected.", () => {
     expect(saveData.tasks[0].title).toBe("first task");

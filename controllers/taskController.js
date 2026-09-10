@@ -1,5 +1,11 @@
-const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
+const {
+  taskSchema,
+  patchTaskSchema,
+  bulkIdsSchema,
+  bulkUpdateSchema,
+} = require("../validation/taskSchema");
 const { paginationSchema } = require("../validation/paginationSchema");
+const { logSchema } = require("../validation/logSchema");
 const prisma = require("../db/prisma");
 
 function parseTaskId(rawId) {
@@ -10,7 +16,13 @@ function parseTaskId(rawId) {
 }
 
 function getOrderBy(query) {
-  const validSortFields = ["title", "priority", "createdAt", "id", "isCompleted"];
+  const validSortFields = [
+    "title",
+    "priority",
+    "createdAt",
+    "id",
+    "isCompleted",
+  ];
   const sortBy = query.sortBy || "createdAt";
   const sortDirection = query.sortDirection === "asc" ? "asc" : "desc";
 
@@ -18,6 +30,54 @@ function getOrderBy(query) {
     return { [sortBy]: sortDirection };
   }
   return { createdAt: "desc" };
+}
+
+/**
+ * Builds a Prisma where clause from filter query parameters, always scoped to the
+ * logged-in user. Also reports whether any filter beyond the user scope was applied,
+ * so bulk operations can refuse to run unfiltered.
+ * @param {*} req
+ */
+function buildTaskFilterWhereClause(req) {
+  const whereClause = { userId: req.user.id };
+  let hasFilter = false;
+
+  if (req.query.find) {
+    whereClause.title = {
+      contains: req.query.find,
+      mode: "insensitive",
+    };
+    hasFilter = true;
+  }
+
+  if (req.query.isCompleted === "true" || req.query.isCompleted === "false") {
+    whereClause.isCompleted = req.query.isCompleted === "true";
+    hasFilter = true;
+  }
+
+  if (["low", "medium", "high"].includes(req.query.priority)) {
+    whereClause.priority = req.query.priority;
+    hasFilter = true;
+  }
+
+  const minDate = req.query.min_date ? new Date(req.query.min_date) : null;
+  const maxDate = req.query.max_date ? new Date(req.query.max_date) : null;
+  if (
+    (minDate && !Number.isNaN(minDate.getTime())) ||
+    (maxDate && !Number.isNaN(maxDate.getTime()))
+  ) {
+    whereClause.createdAt = {};
+    if (minDate && !Number.isNaN(minDate.getTime())) {
+      whereClause.createdAt.gte = minDate;
+      hasFilter = true;
+    }
+    if (maxDate && !Number.isNaN(maxDate.getTime())) {
+      whereClause.createdAt.lte = maxDate;
+      hasFilter = true;
+    }
+  }
+
+  return { whereClause, hasFilter };
 }
 
 /**
@@ -104,49 +164,87 @@ async function bulkCreate(req, res, next) {
 }
 
 /**
+ * Updates every task owned by the logged-in user that is identified by the given id array
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function bulkUpdateByIds(req, res, next) {
+  if (!req.body) req.body = {};
+
+  const { error, value } = bulkUpdateSchema.validate(req.body, {
+    abortEarly: false,
+  });
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const { ids, ...data } = value;
+
+  let result = null;
+  try {
+    result = await prisma.task.updateMany({
+      where: { id: { in: ids }, userId: req.user.id },
+      data,
+    });
+  } catch (e) {
+    return next(e);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Bulk update successful", tasksUpdated: result.count });
+}
+
+/**
+ * Deletes every task owned by the logged-in user that is identified by the given id array
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function bulkDeleteByIds(req, res, next) {
+  if (!req.body) req.body = {};
+
+  const { error, value } = bulkIdsSchema.validate(req.body, {
+    abortEarly: false,
+  });
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  let result = null;
+  try {
+    result = await prisma.task.deleteMany({
+      where: { id: { in: value.ids }, userId: req.user.id },
+    });
+  } catch (e) {
+    return next(e);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Bulk delete successful", tasksDeleted: result.count });
+}
+
+/**
  * Lists the logged-in user's tasks
  * @param {*} req
  * @param {*} res
  * @param {*} next
  */
 async function index(req, res, next) {
-  const { error: paginationError, value: paginationValue } = paginationSchema.validate({
-    page: req.query.page,
-    limit: req.query.limit,
-  });
+  const { error: paginationError, value: paginationValue } =
+    paginationSchema.validate({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
   if (paginationError) {
     return res.status(400).json({ message: paginationError.message });
   }
   const { page, limit } = paginationValue;
   const skip = (page - 1) * limit;
 
-  const whereClause = { userId: req.user.id };
-  if (req.query.find) {
-    whereClause.title = {
-      contains: req.query.find,
-      mode: "insensitive",
-    };
-  }
-
-  if (req.query.isCompleted === "true" || req.query.isCompleted === "false") {
-    whereClause.isCompleted = req.query.isCompleted === "true";
-  }
-
-  if (["low", "medium", "high"].includes(req.query.priority)) {
-    whereClause.priority = req.query.priority;
-  }
-
-  const minDate = req.query.min_date ? new Date(req.query.min_date) : null;
-  const maxDate = req.query.max_date ? new Date(req.query.max_date) : null;
-  if ((minDate && !Number.isNaN(minDate.getTime())) || (maxDate && !Number.isNaN(maxDate.getTime()))) {
-    whereClause.createdAt = {};
-    if (minDate && !Number.isNaN(minDate.getTime())) {
-      whereClause.createdAt.gte = minDate;
-    }
-    if (maxDate && !Number.isNaN(maxDate.getTime())) {
-      whereClause.createdAt.lte = maxDate;
-    }
-  }
+  const { whereClause } = buildTaskFilterWhereClause(req);
 
   let tasks = null;
   let total = null;
@@ -195,7 +293,73 @@ async function index(req, res, next) {
 }
 
 /**
- * Shows a single task owned by the logged-in user
+ * Updates every task owned by the logged-in user that matches the filter query parameters
+ * (find, isCompleted, priority, min_date, max_date). At least one filter is required.
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function updateByFilter(req, res, next) {
+  if (!req.body) req.body = {};
+
+  const { error, value } = patchTaskSchema.validate(req.body, {
+    abortEarly: false,
+  });
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const { whereClause, hasFilter } = buildTaskFilterWhereClause(req);
+  if (!hasFilter) {
+    return res.status(400).json({
+      message:
+        "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
+    });
+  }
+
+  let result = null;
+  try {
+    result = await prisma.task.updateMany({ where: whereClause, data: value });
+  } catch (e) {
+    return next(e);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Bulk update successful", tasksUpdated: result.count });
+}
+
+/**
+ * Deletes every task owned by the logged-in user that matches the filter query parameters
+ * (find, isCompleted, priority, min_date, max_date). At least one filter is required.
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function deleteByFilter(req, res, next) {
+  const { whereClause, hasFilter } = buildTaskFilterWhereClause(req);
+  if (!hasFilter) {
+    return res.status(400).json({
+      message:
+        "At least one filter query parameter (find, isCompleted, priority, min_date, max_date) is required.",
+    });
+  }
+
+  let result = null;
+  try {
+    result = await prisma.task.deleteMany({ where: whereClause });
+  } catch (e) {
+    return next(e);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Bulk delete successful", tasksDeleted: result.count });
+}
+
+/**
+ * Shows a single task owned by the logged-in user. Pass ?include=logs to also
+ * return the task's progress log entries.
  * @param {*} req
  * @param {*} res
  * @param {*} next
@@ -203,8 +367,12 @@ async function index(req, res, next) {
 async function show(req, res, next) {
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
+
+  const includeLogs = req.query.include === "logs";
 
   let task = null;
   try {
@@ -213,7 +381,18 @@ async function show(req, res, next) {
         id: taskId,
         userId: req.user.id,
       },
-      select: { title: true, isCompleted: true, priority: true, id: true },
+      select: {
+        title: true,
+        isCompleted: true,
+        priority: true,
+        id: true,
+        ...(includeLogs && {
+          Log: {
+            select: { id: true, status: true, createdAt: true },
+            orderBy: { createdAt: "desc" },
+          },
+        }),
+      },
     });
   } catch (err) {
     if (err.code === "P2025") {
@@ -247,7 +426,9 @@ async function update(req, res, next) {
 
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   let updatedTask = null;
@@ -279,7 +460,9 @@ async function update(req, res, next) {
 async function deleteTask(req, res, next) {
   const taskId = parseTaskId(req.params?.id);
   if (Number.isNaN(taskId)) {
-    return res.status(400).json({ message: "The task ID passed is not valid." });
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
   }
 
   let deletedTask = null;
@@ -301,11 +484,66 @@ async function deleteTask(req, res, next) {
   res.status(200).json(deletedTask);
 }
 
+/**
+ * Adds a progress log entry to a task owned by the logged-in user
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function addLog(req, res, next) {
+  if (!req.body) req.body = {};
+
+  const taskId = parseTaskId(req.params?.id);
+  if (Number.isNaN(taskId)) {
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid." });
+  }
+
+  const { error, value } = logSchema.validate(req.body, {
+    abortEarly: false,
+  });
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  let task = null;
+  try {
+    task = await prisma.task.findUnique({
+      where: { id: taskId, userId: req.user.id },
+      select: { id: true },
+    });
+  } catch (e) {
+    return next(e);
+  }
+
+  if (!task) {
+    return res.status(404).json({ message: "The task was not found." });
+  }
+
+  let log = null;
+  try {
+    log = await prisma.log.create({
+      data: { taskId, status: value.status },
+      select: { id: true, taskId: true, status: true, createdAt: true },
+    });
+  } catch (e) {
+    return next(e);
+  }
+
+  res.status(201).json(log);
+}
+
 module.exports = {
   create,
   bulkCreate,
+  bulkUpdateByIds,
+  bulkDeleteByIds,
   index,
+  updateByFilter,
+  deleteByFilter,
   show,
   update,
   deleteTask,
+  addLog,
 };

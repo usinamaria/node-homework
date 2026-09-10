@@ -9,6 +9,7 @@ An event is a signal that something has happened in the application — for exam
 A listener is a callback function that's registered to run whenever a specific event is emitted. You attach it with `.on("eventName", callback)`. When `.emit("eventName", data)` is called, every listener registered for that event runs, receiving whatever data was passed along. This decouples the code that produces an event from the code that reacts to it.
 
 **My events.js file:**
+
 ```js
 const EventEmitter = require("events");
 const emitter = new EventEmitter();
@@ -26,11 +27,13 @@ if (require.main === module) {
   }, 5000);
 }
 ```
+
 Here, `"time"` is the event, and the function passed to `emitter.on` is the listener. When the file is run directly, `setInterval` emits a `"time"` event every 5 seconds, and the listener logs the message it receives.
 
 ## What are the key differences between Node's HTTP module and Express?
 
 **What I had to do manually in sampleHTTP.js:**
+
 - Manually inspect `req.method` and `req.url` with a chain of `if`/`else if` statements to figure out which route matched.
 - Manually set the status code and headers with `res.writeHead(...)` for every response.
 - Manually build and send the response body with `res.end(JSON.stringify(...))`.
@@ -38,6 +41,7 @@ Here, `"time"` is the event, and the function passed to `emitter.on` is the list
 - Manually wrap the JSON parsing in a `try/catch` so malformed input didn't crash the server, and manually write the 404 fallback for unmatched routes.
 
 **What Express makes easier in app.js:**
+
 - Routing is declarative — `app.get("/path", handler)` and `app.post("/path", handler)` replace the manual `if (req.method === ... && req.url === ...)` checks.
 - `express.json()` middleware automatically parses JSON request bodies into `req.body`, so I don't need to manually listen for `"data"`/`"end"` events or call `JSON.parse()` myself.
 - `res.status(code).json(obj)` replaces manually calling `res.writeHead()` and `res.end(JSON.stringify(...))`.
@@ -50,16 +54,18 @@ Here, `"time"` is the event, and the function passed to `emitter.on` is the list
 `app.js` is the entry point of the backend. It creates the Express app, registers global middleware (like `express.json()`), mounts routers (like `timeRouter` at `/api`), defines the catch-all 404 handler, and starts the server with `app.listen()`. It also handles server-level concerns like the `EADDRINUSE` error and graceful shutdown on `SIGINT`/`SIGTERM`.
 
 **What the routes/ folder does:**
-The `routes/` folder maps URL paths and HTTP methods to controller functions. It only says *which* handler runs for *which* path — it doesn't contain the actual response logic. For example, `routes/timeRoutes.js` wires `GET /time` and `POST /echo` to functions imported from the controller.
+The `routes/` folder maps URL paths and HTTP methods to controller functions. It only says _which_ handler runs for _which_ path — it doesn't contain the actual response logic. For example, `routes/timeRoutes.js` wires `GET /time` and `POST /echo` to functions imported from the controller.
 
 **What the controllers/ folder does:**
 The `controllers/` folder holds the actual handler functions — the logic that runs when a route is hit, like building and sending the response. Separating this from the routes file keeps the "what URL triggers this" concern (routing) separate from the "what actually happens" concern (business logic), which makes the codebase easier to navigate and test as it grows.
 
 **One route and the controller function it calls:**
+
 ```js
 // routes/timeRoutes.js
 router.get("/time", timeController.getTime);
 ```
+
 ```js
 // controllers/timeController.js
 function getTime(req, res) {

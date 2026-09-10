@@ -509,8 +509,10 @@ describe("function tests of user operations", () => {
         email: "jdeere@example.com",
         password: "Pa$$word20",
       };
-      saveRes = await agent.post("/api/users/register")
-        .set("X-Recaptcha-Test", process.env.JWT_SECRET).send(newUser);
+      saveRes = await agent
+        .post("/api/users/register")
+        .set("X-Recaptcha-Test", process.env.JWT_SECRET)
+        .send(newUser);
       expect(saveRes.status).toBe(201);
     });
     it("47. Registration returns an object with the expected name.", () => {

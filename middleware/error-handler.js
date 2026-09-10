@@ -1,9 +1,15 @@
+// Express only treats this as error-handling middleware if the callback has 4
+// parameters, so `next` must stay even though it's unused.
+// eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
   if (err.name === "PrismaClientInitializationError") {
-    console.error("Couldn't connect to the database. Is it running?")
+    console.error("Couldn't connect to the database. Is it running?");
   }
-  if (err.code === "ECONNREFUSED" && err.port === 5432) { // the postgresql port
-    console.log("The database connection was refused.  Is your database service running?");
+  if (err.code === "ECONNREFUSED" && err.port === 5432) {
+    // the postgresql port
+    console.log(
+      "The database connection was refused.  Is your database service running?",
+    );
   }
   res.status(500).json({ message: err.message || "Something went wrong" });
 }

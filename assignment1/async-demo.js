@@ -1,16 +1,16 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const filePath = path.join(__dirname, 'sample-files', 'sample.txt');
+const filePath = path.join(__dirname, "sample-files", "sample.txt");
 
-fs.writeFileSync(filePath, 'Hello, async world!');
+fs.writeFileSync(filePath, "Hello, async world!");
 
-fs.readFile(filePath, 'utf8', (err, data) => {
+fs.readFile(filePath, "utf8", (err, data) => {
   if (err) {
     console.error(err);
     return;
   }
-  console.log('Callback read:', data);
+  console.log("Callback read:", data);
 });
 
 // Callback hell example (for illustration only, not run):
@@ -32,9 +32,9 @@ fs.readFile(filePath, 'utf8', (err, data) => {
 // });
 
 fs.promises
-  .readFile(filePath, 'utf8')
+  .readFile(filePath, "utf8")
   .then((data) => {
-    console.log('Promise read:', data);
+    console.log("Promise read:", data);
   })
   .catch((err) => {
     console.error(err);
@@ -42,8 +42,8 @@ fs.promises
 
 async function readWithAsyncAwait() {
   try {
-    const data = await fs.promises.readFile(filePath, 'utf8');
-    console.log('Async/Await read:', data);
+    const data = await fs.promises.readFile(filePath, "utf8");
+    console.log("Async/Await read:", data);
   } catch (err) {
     console.error(err);
   }

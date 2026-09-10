@@ -46,6 +46,7 @@ describe("testing logon, register, and logoff", () => {
     const req = httpMocks.createRequest({
       method: "POST",
       body: { name: "Bob", email: "bob@sample.com", password: "Pa$$word20" },
+      headers: { "X-Recaptcha-Test": process.env.RECAPTCHA_BYPASS },
     });
     saveRes = MockResponseWithCookies();
     await waitForRouteHandlerCompletion(register, req, saveRes);
@@ -101,6 +102,7 @@ describe("testing logon, register, and logoff", () => {
     const req = httpMocks.createRequest({
       method: "POST",
       body: { name: "Bob", email: "bob@sample.com", password: "Pa$$word20" },
+      headers: { "X-Recaptcha-Test": process.env.RECAPTCHA_BYPASS },
     });
     saveRes = MockResponseWithCookies();
     await waitForRouteHandlerCompletion(register, req, saveRes);

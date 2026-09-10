@@ -2,13 +2,22 @@ const crypto = require("crypto");
 const { randomUUID } = crypto;
 const util = require("util");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const { StatusCodes } = require("http-status-codes");
 const { userSchema, logonSchema } = require("../validation/userSchema");
 const prisma = require("../db/prisma");
 
 const scrypt = util.promisify(crypto.scrypt);
 
-const cookieFlags = (req) => {
+// "postmessage" is the redirect_uri Google's client libraries expect when the
+// front end obtained the authorization code via a popup (not a real page redirect).
+const googleClient = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI || "postmessage",
+);
+
+const cookieFlags = () => {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // only when HTTPS is available
@@ -19,9 +28,12 @@ const cookieFlags = (req) => {
 const setJwtCookie = (req, res, user) => {
   // Sign JWT
   const payload = { id: user.id, csrfToken: randomUUID() };
+  if (user.roles) {
+    payload.roles = user.roles; // comma-delimited list, e.g. "manager"
+  }
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
   // Set cookie.  Note that the cookie flags have to be different in production and in test.
-  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
+  res.cookie("jwt", token, { ...cookieFlags(), maxAge: 3600000 }); // 1 hour expiration
   return payload.csrfToken; // this is needed in the body returned by logon() or register()
 };
 
@@ -91,7 +103,9 @@ async function register(req, res, next) {
   if (!isPerson) {
     return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ message: "Bot verification failed. Please complete the reCAPTCHA." });
+      .json({
+        message: "Bot verification failed. Please complete the reCAPTCHA.",
+      });
   }
 
   const { error, value } = userSchema.validate(req.body, {
@@ -116,7 +130,11 @@ async function register(req, res, next) {
       });
 
       const welcomeTaskData = [
-        { title: "Complete your profile", userId: newUser.id, priority: "medium" },
+        {
+          title: "Complete your profile",
+          userId: newUser.id,
+          priority: "medium",
+        },
         { title: "Add your first task", userId: newUser.id, priority: "high" },
         { title: "Explore the app", userId: newUser.id, priority: "low" },
       ];
@@ -180,7 +198,13 @@ async function logon(req, res, next) {
   try {
     user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, name: true, email: true, hashedPassword: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        hashedPassword: true,
+        roles: true,
+      },
     });
   } catch (e) {
     return next(e);
@@ -211,12 +235,77 @@ async function logon(req, res, next) {
 }
 
 /**
+ * Logs on (or registers) a user via a Google OAuth authorization code
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+async function googleLogon(req, res, next) {
+  if (!req.body) req.body = {};
+
+  // The class's sample front end (AuthGoogleButton.jsx) posts { code }; accept
+  // authorizationCode too since that's the name used in the assignment write-up.
+  const authorizationCode = req.body.code || req.body.authorizationCode;
+  if (!authorizationCode) {
+    return res.status(400).json({ message: "authorizationCode is required." });
+  }
+
+  let payload;
+  try {
+    const { tokens } = await googleClient.getToken(authorizationCode);
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    // any failure exchanging/verifying the code just means "not authenticated"
+    return res.status(401).json({ message: "Google authentication failed." });
+  }
+
+  if (!payload?.email) {
+    return res.status(401).json({ message: "Google authentication failed." });
+  }
+
+  const email = payload.email.toLowerCase();
+  const name = payload.name || email;
+
+  let user = null;
+  try {
+    user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, email: true, roles: true },
+    });
+
+    if (!user) {
+      // Google-authenticated users never log on with a password, so this value is
+      // unusable by comparePassword() (it doesn't contain the "salt:hash" separator).
+      const placeholderHash = crypto.randomBytes(32).toString("hex");
+      user = await prisma.user.create({
+        data: { name, email, hashedPassword: placeholderHash },
+        select: { id: true, name: true, email: true, roles: true },
+      });
+    }
+  } catch (e) {
+    return next(e);
+  }
+
+  const csrfToken = setJwtCookie(req, res, user);
+
+  res.status(200).json({
+    name: user.name,
+    email: user.email,
+    csrfToken,
+  });
+}
+
+/**
  * Logs out the current user
  * @param {*} req
  * @param {*} res
  */
 function logoff(req, res) {
-  res.clearCookie("jwt", cookieFlags(req));
+  res.clearCookie("jwt", cookieFlags());
   res.status(200).send();
 }
 
@@ -269,6 +358,7 @@ async function show(req, res, next) {
 module.exports = {
   register,
   logon,
+  googleLogon,
   logoff,
   show,
 };

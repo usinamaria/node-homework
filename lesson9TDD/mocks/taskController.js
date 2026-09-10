@@ -179,9 +179,10 @@ exports.update = async (req, res, next) => {
   let task;
   try {
     task = await prisma.task.update({
-      where: { id, 
+      where: {
+        id,
         // userId: req.user.id, bug
-       },
+      },
       data: value,
       select: {
         id: true,

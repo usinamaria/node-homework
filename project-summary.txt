@@ -1,1 +1,151 @@
 Deployed Render app URL: https://node-homework-ibwz.onrender.com
+Interactive API docs (Swagger UI): https://node-homework-ibwz.onrender.com/api-docs
+
+EXTRA FEATURES
+
+This project includes five extra features beyond the core CRUD/auth requirements:
+
+1. Swagger/OpenAPI documentation for the whole API, at /api-docs.
+2. Role-based access control (a "manager" role gating the analytics endpoints).
+3. Progress logs for tasks (a one-to-many Log model, with cascading delete).
+4. Bulk update/delete of tasks, two ways: by a filter (query parameters) and by an
+   explicit array of task ids.
+5. Google OAuth logon ("Logon with Google").
+
+Below is every REST API that is new or whose behavior changed, with enough detail
+to try each one in Postman. Authentication notes that apply to all of them:
+
+- Auth is a JWT stored in an httpOnly cookie named "jwt", set by
+  POST /api/users/logon, /api/users/register, or /api/users/googleLogon.
+  In Postman, logging on once (with cookies enabled, the default) is enough --
+  the cookie is sent automatically on later requests.
+- Any POST/PATCH/PUT/DELETE request made while logged on must also include an
+  X-CSRF-TOKEN header set to the csrfToken value returned in the logon/register
+  response body.
+
+--------------------------------------------------------------------------------
+1. GOOGLE OAUTH LOGON
+--------------------------------------------------------------------------------
+
+POST /api/users/googleLogon
+
+Request body (JSON):
+  { "code": "<authorization code from Google>" }
+  (the alias "authorizationCode" is also accepted, to match the field name used
+  in the assignment write-up)
+
+No query parameters. No CSRF header required (this is a logon endpoint, same as
+/api/users/logon).
+
+Behavior: exchanges the authorization code for tokens with Google, verifies the
+returned id token, and finds or creates a user record with that Google account's
+email/name (a random, unusable placeholder is stored in place of a password
+hash for accounts created this way). On success it sets the same JWT cookie as
+a normal logon and returns:
+  { "name": "...", "email": "...", "csrfToken": "..." }
+
+Because this endpoint needs a real authorization code from Google's consent
+flow, it can't be exercised directly from Postman -- it's meant to be tried from
+the class's sample front end's "Logon with Google" button. A request with a
+missing or invalid code returns 400 or 401 respectively, which is easy to
+verify in Postman if you just want to see the validation path.
+
+--------------------------------------------------------------------------------
+2. MANAGER-ONLY ANALYTICS
+--------------------------------------------------------------------------------
+
+All three existing /api/analytics routes now additionally require the logged-on
+user to have the "manager" role, in addition to being logged on:
+
+  GET /api/analytics/users/:id
+  GET /api/analytics/users            (query params: page, limit)
+  GET /api/analytics/tasks/search     (query params: q [required, 2+ chars], limit)
+
+A non-manager (or logged-off) request to any of these now returns 401 instead of
+running the query.
+
+To test as a manager: give a user's database record a "roles" value of
+"manager" (e.g. with Prisma Studio -- npx prisma studio -- open the User table
+and set the roles column), then log on as that user in Postman. The role is
+carried in the signed JWT at logon time, so log on again after changing it.
+
+--------------------------------------------------------------------------------
+3. TASK PROGRESS LOGS
+--------------------------------------------------------------------------------
+
+POST /api/tasks/:id/logs
+
+Path parameter: id -- the task's id (must belong to the logged-on user).
+Request body (JSON):
+  { "status": "<1-255 character progress note>" }
+Requires the X-CSRF-TOKEN header.
+
+Response 201:
+  { "id": ..., "taskId": ..., "status": "...", "createdAt": "..." }
+
+GET /api/tasks/:id?include=logs
+
+Same route as the existing "get one task" endpoint, with a new optional query
+parameter:
+  include=logs  -- when present, the response includes a "Log" array of that
+                   task's progress entries (newest first). Omit it (or use any
+                   other value) and the response is unchanged from before.
+
+Deleting a task (DELETE /api/tasks/:id) that has log entries now succeeds and
+cascades to delete its logs, instead of failing on a foreign-key constraint.
+
+--------------------------------------------------------------------------------
+4. BULK UPDATE / DELETE BY FILTER
+--------------------------------------------------------------------------------
+
+PATCH /api/tasks
+DELETE /api/tasks
+
+Both act on every task owned by the logged-on user that matches the filter
+query parameters (the same filters GET /api/tasks already supports):
+  find          -- case-insensitive substring match on title
+  isCompleted   -- "true" or "false"
+  priority      -- "low", "medium", or "high"
+  min_date      -- ISO date; tasks created on/after this date
+  max_date      -- ISO date; tasks created on/before this date
+
+At least one of the above filters is required, or the request returns 400 --
+this is a safety check so a request can't accidentally touch every task.
+
+PATCH request body (JSON, at least one field):
+  { "isCompleted": true, "priority": "low", "title": "..." }
+Response 200: { "message": "...", "tasksUpdated": <count> }
+
+DELETE has no request body.
+Response 200: { "message": "...", "tasksDeleted": <count> }
+
+Both require the X-CSRF-TOKEN header.
+
+Example: PATCH /api/tasks?isCompleted=false with body {"isCompleted": true}
+marks every one of your not-yet-completed tasks as completed in one request.
+
+--------------------------------------------------------------------------------
+5. BULK UPDATE / DELETE BY ID ARRAY
+--------------------------------------------------------------------------------
+
+PATCH /api/tasks/bulk
+DELETE /api/tasks/bulk
+
+Both act on a specific set of tasks, addressed by id, instead of a filter. Any
+id in the array that doesn't belong to the logged-on user is silently skipped
+(not updated/deleted, no error).
+
+PATCH request body (JSON):
+  { "ids": [1, 2, 3], "isCompleted": true }
+  ("ids" is required; at least one of title/isCompleted/priority is also
+  required)
+Response 200: { "message": "...", "tasksUpdated": <count> }
+
+DELETE request body (JSON):
+  { "ids": [1, 2, 3] }
+Response 200: { "message": "...", "tasksDeleted": <count> }
+
+Both require the X-CSRF-TOKEN header.
+
+(POST /api/tasks/bulk, for creating many tasks at once, already existed before
+this project's extra-feature work and is unchanged.)
